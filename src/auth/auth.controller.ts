@@ -1,4 +1,13 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -7,7 +16,10 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { username: string; password: string }) {
+  async login(
+    @Body() body: { username: string; password: string },
+    @Res() res: Response,
+  ) {
     const user = await this.authService.validateUser(
       body.username,
       body.password,
@@ -15,7 +27,7 @@ export class AuthController {
     if (!user) {
       return { message: 'Invalid credentials' };
     }
-    return this.authService.login(user);
+    return this.authService.login(user, res);
   }
 
   @Post('register')
@@ -23,14 +35,18 @@ export class AuthController {
     return this.authService.register(body.username, body.password);
   }
 
-  @Post('refresh')
-  async refresh(@Body() body: { userId: number; refreshToken: string }) {
-    return this.authService.refreshTokens(body.userId, body.refreshToken);
+  @Post('refresh/:id')
+  async refresh(
+    @Param() id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    return this.authService.refreshTokens(+id, req, res);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  async logout(@Req() req: any) {
-    return this.authService.logout(req.user.userId);
+  async logout(@Res() res: Response) {
+    return this.authService.logout(res);
   }
 }

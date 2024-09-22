@@ -1,15 +1,16 @@
-version: "3"
+version: '3'
 services:
-    postgres_aurora:
-        image: postgres:latest
-        ports:
-            - "5432:5432"
-        volumes:
-            - /data/postgres:/data/postgres
-        env_file:
-            - .env
-        networks:
-            - postgres
+  postgres_aurora:
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    volumes:
+      - /data/postgres:/data/postgres
+    env_file:
+      - .env
+    networks:
+      - postgres
+
 networks:
-    postgres:
-        driver: bridge
+  postgres:
+    driver: bridge

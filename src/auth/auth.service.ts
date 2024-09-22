@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { Request, Response } from 'express';
+import { User } from 'src/user/user.entity';
 import { UserService } from 'src/user/user.service';
 import { JwtPayload } from './jwt-payload.interface';
 
@@ -12,7 +14,7 @@ export class AuthService {
   ) {}
 
   async validateUser(username: string, pass: string) {
-    const user = await this.userService.findOOneByUsername(username);
+    const user = await this.userService.findOneByUsername(username);
     if (user && (await bcrypt.compare(pass, user.password))) {
       const result = user;
       delete result.password;
@@ -21,12 +23,23 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  async login(user: User, res: Response) {
     const payload: JwtPayload = { username: user.username, sub: user.id };
-    return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: await this.generateRefreshToken(user.id),
-    };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = await this.generateRefreshToken(user.id);
+
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({ message: 'Login successful' });
   }
 
   async register(username: string, password: string) {
@@ -46,7 +59,7 @@ export class AuthService {
     return refreshToken;
   }
 
-  async refreshTokens(userId: number, refreshToken: string): Promise<any> {
+  async refreshTokens(userId: number, req: Request, res: Response) {
     const user = await this.userService.findOne(userId);
 
     if (!user || !user.refreshToken) {
@@ -54,22 +67,31 @@ export class AuthService {
     }
 
     const refreshTokenMatches = await bcrypt.compare(
-      refreshToken,
+      req?.cookies?.refresh_token,
       user.refreshToken,
     );
     if (!refreshTokenMatches) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const payload: JwtPayload = { username: user.username, sub: user.id };
-    return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: await this.generateRefreshToken(user.id),
-    };
+    const newAccessToken = this.jwtService.sign({ sub: user.id });
+    const newRefreshToken = await this.generateRefreshToken(userId);
+
+    res.cookie('access_token', newAccessToken, {
+      httpOnly: true,
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({ message: 'Tokens refreshed' });
   }
 
-  async logout(userId: number): Promise<void> {
-    // Remove the refresh token when user logs out
-    await this.userService.updateRefreshToken(userId, null);
+  async logout(res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    return res.status(200).json({ message: 'Logout successful' });
   }
 }
