@@ -1,6 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeleteResult, EntityNotFoundError, Repository } from 'typeorm';
+import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './user.entity';
 
 @Injectable()
@@ -13,20 +18,30 @@ export class UserService {
     return this.userRepository.find();
   }
 
-  findOneByUsername(username: string): Promise<User | null> {
+  findOneByUsername(username: string): Promise<User> {
     return this.userRepository.findOneBy({ username });
   }
 
-  findOne(id: number): Promise<User | null> {
-    return this.userRepository.findOneBy({ id });
+  async findOne(id: number): Promise<User> {
+    try {
+      return await this.userRepository.findOneByOrFail({ id });
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
   }
 
-  async create(username: string, password: string): Promise<User> {
-    const exists = await this.findOneByUsername(username);
+  async create(data: CreateUserDto): Promise<User> {
+    const exists = await this.findOneByUsername(data.username);
     if (exists) {
       throw new BadRequestException('Username already exists');
     }
-    const user = this.userRepository.create({ username, password });
+    const user = this.userRepository.create({
+      username: data.username,
+      password: data.password,
+    });
     return this.userRepository.save(user);
   }
 
@@ -37,7 +52,7 @@ export class UserService {
     await this.userRepository.update(userId, { refreshToken });
   }
 
-  async remove(id: number): Promise<void> {
-    await this.userRepository.delete(id);
+  async remove(id: number): Promise<DeleteResult> {
+    return this.userRepository.delete(id);
   }
 }

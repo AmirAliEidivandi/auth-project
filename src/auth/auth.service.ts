@@ -1,26 +1,35 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import { User } from 'src/user/user.entity';
 import { UserService } from 'src/user/user.service';
-import { JwtPayload } from './jwt-payload.interface';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
-  async validateUser(username: string, pass: string) {
-    const user = await this.userService.findOneByUsername(username);
-    if (user && (await bcrypt.compare(pass, user.password))) {
-      const result = user;
-      delete result.password;
-      return result;
+  async validateUser(loginDto: LoginDto) {
+    const user = await this.userService.findOneByUsername(loginDto.username);
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
-    return null;
+    if (!(await bcrypt.compare(loginDto.password, user.password))) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return user;
   }
 
   async login(user: User, res: Response) {
@@ -42,17 +51,22 @@ export class AuthService {
     return res.status(200).json({ message: 'Login successful' });
   }
 
-  async register(username: string, password: string) {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    return this.userService.create(username, hashedPassword);
+  async register(registerDto: RegisterDto) {
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    return this.userService.create({
+      username: registerDto.username,
+      password: hashedPassword,
+    });
   }
 
   async generateRefreshToken(userId: number) {
+    const secret = this.configService.get<string>('JWT_SECRET');
+    const expiresIn = this.configService.get<string>('JWT_EXPIRATION');
     const refreshToken = this.jwtService.sign(
       {
         sub: userId,
       },
-      { secret: 'secret', expiresIn: '7d' },
+      { secret, expiresIn },
     );
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     await this.userService.updateRefreshToken(userId, hashedRefreshToken);
@@ -93,5 +107,15 @@ export class AuthService {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
     return res.status(200).json({ message: 'Logout successful' });
+  }
+
+  async deleteAccount(userId: number, res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    const result = await this.userService.remove(userId);
+    if (!result.affected) {
+      throw new UnauthorizedException('User not found or already deleted');
+    }
+    return res.status(200).json({ message: 'Account deleted successfully' });
   }
 }

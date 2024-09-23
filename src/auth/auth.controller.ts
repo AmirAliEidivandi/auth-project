@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Param,
   Post,
   Req,
@@ -9,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
@@ -16,28 +19,22 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(
-    @Body() body: { username: string; password: string },
-    @Res() res: Response,
-  ) {
-    const user = await this.authService.validateUser(
-      body.username,
-      body.password,
-    );
+  async login(@Body() loginDto: LoginDto, @Res() res: Response) {
+    const user = await this.authService.validateUser(loginDto);
     if (!user) {
-      return { message: 'Invalid credentials' };
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     return this.authService.login(user, res);
   }
 
   @Post('register')
-  async register(@Body() body: { username: string; password: string }) {
-    return this.authService.register(body.username, body.password);
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
   }
 
   @Post('refresh/:id')
   async refresh(
-    @Param() id: string,
+    @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
@@ -48,5 +45,12 @@ export class AuthController {
   @Post('logout')
   async logout(@Res() res: Response) {
     return this.authService.logout(res);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('delete-account')
+  async delete(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user['id'];
+    return this.authService.deleteAccount(userId, res);
   }
 }
