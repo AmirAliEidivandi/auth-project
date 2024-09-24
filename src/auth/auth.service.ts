@@ -5,10 +5,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { User } from '@user/user.entity';
+import { UserService } from '@user/user.service';
 import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
-import { User } from 'src/user/user.entity';
-import { UserService } from 'src/user/user.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';

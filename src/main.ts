@@ -1,24 +1,33 @@
-import { HttpException, HttpStatus, ValidationPipe } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './filters/http=exception.filter';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
+  app.enableVersioning({
+    type: VersioningType.URI,
+    prefix: 'api/v',
+  });
 
   if (['local', 'development'].includes(process.env.NODE_ENV)) {
     const config = new DocumentBuilder()
       .setTitle('Auth API')
-      .setDescription('API for authentication system')
+      .setDescription('API for authentication system - Version 1')
       .setVersion('1.0')
       .build();
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
+    SwaggerModule.setup('api/v1/docs', app, document);
   }
 
   app.use(cookieParser());

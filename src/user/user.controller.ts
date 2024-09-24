@@ -5,7 +5,10 @@ import { UserService } from './user.service';
 
 @ApiTags('Users')
 @UseGuards(AuthGuard('jwt'))
-@Controller('users')
+@Controller({
+  path: 'users',
+  version: '1',
+})
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
