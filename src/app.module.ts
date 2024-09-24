@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from '@user/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AppService } from './app.service';
     UserModule,
     AuthModule,
     TerminusModule,
+    HttpModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, TypeOrmHealthIndicator],
