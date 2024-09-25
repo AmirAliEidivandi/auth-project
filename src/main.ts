@@ -8,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import * as morgan from 'morgan';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 
@@ -15,11 +17,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
+  app.use(morgan('dev'));
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'api/v',
   });
 
+  app.use(helmet());
   if (['local', 'development'].includes(process.env.NODE_ENV)) {
     const config = new DocumentBuilder()
       .setTitle('Auth API')

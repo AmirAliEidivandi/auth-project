@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Delete,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Req,
@@ -33,6 +35,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Login a user' })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiBody({ type: LoginDto })
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
     const user = await this.authService.validateUser(loginDto);
@@ -45,6 +48,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'Registration successful' })
   @ApiBody({ type: RegisterDto })
+  @HttpCode(HttpStatus.CREATED)
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
@@ -53,6 +57,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'Token refreshed' })
   @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @HttpCode(HttpStatus.OK)
   @Post('refresh/:id')
   async refresh(
     @Param('id') id: string,
@@ -66,6 +71,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logout successful' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
   @Post('logout')
   async logout(@Res() res: Response) {
     return this.authService.logout(res);
@@ -75,6 +81,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Account deleted' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
   @Delete('delete-account')
   async delete(@Req() req: Request, @Res() res: Response) {
     const userId = req.user['id'];
