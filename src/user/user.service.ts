@@ -34,13 +34,18 @@ export class UserService {
   }
 
   async create(data: CreateUserDto): Promise<User> {
-    const exists = await this.findOneByUsername(data.username);
-    if (exists) {
+    const { email, firstName, lastName, username, password } = data;
+    const userExists = await this.findOneByUsername(username);
+    const emailExists = await this.userRepository.findOneBy({ email });
+    if (userExists || emailExists) {
       throw new BadRequestException('Username already exists');
     }
     const user = this.userRepository.create({
-      username: data.username,
-      password: data.password,
+      username,
+      password,
+      email,
+      firstName,
+      lastName,
     });
     return this.userRepository.save(user);
   }

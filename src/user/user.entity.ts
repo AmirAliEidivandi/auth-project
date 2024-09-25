@@ -13,4 +13,13 @@ export class User {
 
   @Column({ nullable: true }) // Allow null values, initially no refresh token
   refreshToken: string;
+
+  @Column()
+  email: string;
+
+  @Column()
+  firstName: string;
+
+  @Column()
+  lastName: string;
 }

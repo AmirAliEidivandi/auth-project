@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -52,10 +53,18 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    const { email, firstName, lastName, username, password, passwordConfirm } =
+      registerDto;
+    if (password !== passwordConfirm) {
+      throw new BadRequestException('Passwords do not match');
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
     return this.userService.create({
-      username: registerDto.username,
+      username,
       password: hashedPassword,
+      email,
+      firstName,
+      lastName,
     });
   }
 
