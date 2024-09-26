@@ -22,4 +22,10 @@ export class User {
 
   @Column()
   lastName: string;
+
+  @Column({ nullable: true })
+  resetPasswordToken: string;
+
+  @Column({ nullable: true })
+  resetPasswordExpires: Date;
 }

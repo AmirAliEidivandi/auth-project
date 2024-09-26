@@ -60,4 +60,19 @@ export class UserService {
   async remove(id: number): Promise<DeleteResult> {
     return this.userRepository.delete(id);
   }
+
+  async findByEmail(email: string): Promise<User> {
+    return this.userRepository.findOneBy({ email });
+  }
+
+  async findOneByResetToken(token: string): Promise<User> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where('user.resetPasswordToken = :token', { token })
+      .getOne();
+  }
+
+  async save(user: User): Promise<User> {
+    return this.userRepository.save(user);
+  }
 }

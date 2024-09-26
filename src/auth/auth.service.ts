@@ -9,10 +9,14 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '@user/user.entity';
 import { UserService } from '@user/user.service';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { Request, Response } from 'express';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { MailerService } from './mailer.service';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +24,55 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailerService,
   ) {}
+
+  async requestPasswordReset(dto: RequestPasswordResetDto) {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      throw new NotFoundException('User with this email does not exist');
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = await bcrypt.hash(resetToken, 10);
+
+    // Set token and expiration (1 hour)
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = new Date(Date.now() + 3600000);
+    await this.userService.save(user);
+
+    // Send email with the reset token
+    const resetUrl = `${this.configService.get(
+      'FRONTEND_URL',
+    )}/reset-password?token=${resetToken}`;
+
+    await this.mailService.sendPasswordResetEmail(user.email, resetUrl);
+
+    return { message: 'Password reset link sent to email' };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    console.log(dto);
+    const user = await this.userService.findOneByResetToken(dto.token);
+    console.log(user);
+    if (
+      !user ||
+      !user.resetPasswordExpires ||
+      user.resetPasswordExpires < new Date()
+    ) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    if (dto.newPassword !== dto.confirmNewPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    user.password = await bcrypt.hash(dto.newPassword, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await this.userService.save(user);
+    return { message: 'Password has been reset successfully' };
+  }
 
   async validateUser(loginDto: LoginDto) {
     const user = await this.userService.findOneByUsername(loginDto.username);
