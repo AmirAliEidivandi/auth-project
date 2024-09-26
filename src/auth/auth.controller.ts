@@ -24,6 +24,8 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendVerificationCodeDto } from './dto/send-verification.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('Auth')
@@ -106,5 +108,23 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @ApiOperation({ summary: 'Send verification code' })
+  @ApiResponse({ status: 200, description: 'Verification code sent' })
+  @ApiBody({ type: SendVerificationCodeDto })
+  @HttpCode(HttpStatus.OK)
+  @Post('send-verification-code')
+  sendVerificationCode(@Body() dto: SendVerificationCodeDto) {
+    return this.authService.sendVerificationCode(dto);
+  }
+
+  @ApiOperation({ summary: 'Verify email' })
+  @ApiResponse({ status: 200, description: 'Email verified' })
+  @ApiBody({ type: VerifyEmailDto })
+  @HttpCode(HttpStatus.OK)
+  @Post('verify-email')
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto);
   }
 }

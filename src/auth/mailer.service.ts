@@ -20,13 +20,18 @@ export class MailerService {
     });
   }
 
-  async sendPasswordResetEmail(to: string, url: string) {
+  async sendMail(
+    to: string,
+    subject: string,
+    text: string,
+    html: string,
+  ): Promise<void> {
     const mailOptions = {
       from: this.configService.get<string>('MAILER_USER'),
       to,
-      subject: 'Password Reset Request',
-      text: `You requested a password reset. Click the link to reset your password: ${url}`,
-      html: `<p>You requested a password reset. Click the link to reset your password:</p> <a href="${url}">${url}</a>`,
+      subject,
+      text,
+      html,
     };
 
     try {

@@ -15,6 +15,8 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendVerificationCodeDto } from './dto/send-verification.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { MailerService } from './mailer.service';
 
@@ -44,17 +46,18 @@ export class AuthService {
     // Send email with the reset token
     const resetUrl = `${this.configService.get(
       'FRONTEND_URL',
-    )}/reset-password?token=${resetToken}`;
+    )}/reset-password?token=${hashedToken}`;
+    const subject = 'Password Reset';
+    const text = `You are receiving this email because you (or someone else) has requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`;
+    const html = `<p>You are receiving this email because you (or someone else) has requested the reset of the password for your account.</p><p>Please click on the following link, or paste this into your browser to complete the process:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, please ignore this email and your password will remain unchanged.</p>`;
 
-    await this.mailService.sendPasswordResetEmail(user.email, resetUrl);
+    await this.mailService.sendMail(user.email, subject, text, html);
 
     return { message: 'Password reset link sent to email' };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    console.log(dto);
     const user = await this.userService.findOneByResetToken(dto.token);
-    console.log(user);
     if (
       !user ||
       !user.resetPasswordExpires ||
@@ -74,6 +77,35 @@ export class AuthService {
     return { message: 'Password has been reset successfully' };
   }
 
+  async sendVerificationCode(dto: SendVerificationCodeDto) {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      throw new NotFoundException('User with this email does not exist');
+    }
+
+    const updatedUser =
+      await this.userService.generateEmailVerificationCode(user);
+
+    const subject = 'Email Verification';
+    const text = `Your email verification code is: ${updatedUser.emailVerificationCode}`;
+    const html = `<p>Your email verification code is: <b>${updatedUser.emailVerificationCode}</b></p>`;
+
+    await this.mailService.sendMail(user.email, subject, text, html);
+
+    return { message: 'Verification code sent to email' };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    const isValid = await this.userService.verifyEmail(
+      dto.email,
+      dto.verificationCode,
+    );
+    if (!isValid) {
+      throw new BadRequestException('Invalid verification code');
+    }
+    return { message: 'Email verified successfully' };
+  }
+
   async validateUser(loginDto: LoginDto) {
     const user = await this.userService.findOneByUsername(loginDto.username);
     if (!user) {
@@ -81,6 +113,11 @@ export class AuthService {
     }
     if (!(await bcrypt.compare(loginDto.password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email before logging in',
+      );
     }
     return user;
   }

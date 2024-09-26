@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { DeleteResult, EntityNotFoundError, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './user.entity';
@@ -66,13 +68,37 @@ export class UserService {
   }
 
   async findOneByResetToken(token: string): Promise<User> {
-    return this.userRepository
-      .createQueryBuilder('user')
-      .where('user.resetPasswordToken = :token', { token })
-      .getOne();
+    return this.userRepository.findOneBy({ resetPasswordToken: token });
   }
 
   async save(user: User): Promise<User> {
     return this.userRepository.save(user);
+  }
+
+  async generateEmailVerificationCode(user: User) {
+    const verificationCode = crypto.randomBytes(4).toString('hex');
+    const hashedCode = await bcrypt.hash(verificationCode, 10);
+    user.emailVerificationCode = hashedCode;
+    user.emailVerificationExpires = new Date(Date.now() + 3600000);
+    return this.userRepository.save(user);
+  }
+
+  async verifyEmail(email: string, code: string) {
+    const user = await this.userRepository.findOneBy({ email });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const isCodeValid = await bcrypt.compare(code, user.emailVerificationCode);
+    if (!isCodeValid) {
+      throw new BadRequestException('Invalid verification code');
+    }
+    if (user.emailVerificationExpires < new Date()) {
+      throw new BadRequestException('Verification code has expired');
+    }
+    user.isEmailVerified = true;
+    user.emailVerificationCode = null;
+    user.emailVerificationExpires = null;
+    await this.save(user);
+    return { success: true };
   }
 }

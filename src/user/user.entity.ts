@@ -28,4 +28,13 @@ export class User {
 
   @Column({ nullable: true })
   resetPasswordExpires: Date;
+
+  @Column({ nullable: true })
+  emailVerificationCode: string;
+
+  @Column({ nullable: true })
+  emailVerificationExpires: Date;
+
+  @Column({ default: false })
+  isEmailVerified: boolean;
 }
